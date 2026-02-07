@@ -1,0 +1,352 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Fake Review Detector - Ensemble</title>
+    <style>
+        :root {
+            --primary: #6366f1;
+            --bg: #0f172a;
+            --card-bg: #1e293b;
+            --text: #f8fafc;
+            --text-muted: #94a3b8;
+            --success: #22c55e;
+            --danger: #ef4444;
+            --warning: #eab308;
+        }
+
+        body {
+            font-family: 'Inter', system-ui, -apple-system, sans-serif;
+            background-color: var(--bg);
+            color: var(--text);
+            display: flex;
+            justify_content: center;
+            align-items: center;
+            min-height: 100vh;
+            margin: 0;
+            padding: 20px;
+        }
+
+        .container {
+            background-color: var(--card-bg);
+            padding: 2.5rem;
+            border-radius: 1rem;
+            box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.3);
+            width: 100%;
+            max-width: 700px;
+        }
+
+        h1 {
+            text-align: center;
+            margin-bottom: 0.5rem;
+            font-weight: 700;
+            background: linear-gradient(to right, #818cf8, #c084fc);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .subtitle {
+            text-align: center;
+            color: var(--text-muted);
+            margin-bottom: 2rem;
+            font-size: 0.9rem;
+        }
+
+        .status-bar {
+            background-color: #334155;
+            padding: 0.75rem;
+            border-radius: 0.5rem;
+            margin-bottom: 1.5rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-size: 0.875rem;
+        }
+
+        .status-label {
+            color: var(--text-muted);
+        }
+
+        .model-tags {
+            display: flex;
+            gap: 0.5rem;
+        }
+
+        .model-tag {
+            background-color: rgba(99, 102, 241, 0.2);
+            color: #a5b4fc;
+            padding: 0.25rem 0.5rem;
+            border-radius: 0.25rem;
+            font-size: 0.75rem;
+            font-weight: 600;
+        }
+
+        .model-tag.empty {
+            background-color: rgba(239, 68, 68, 0.2);
+            color: #fca5a5;
+        }
+
+        textarea {
+            width: 100%;
+            height: 120px;
+            background-color: #020617;
+            border: 1px solid #475569;
+            border-radius: 0.5rem;
+            padding: 1rem;
+            color: white;
+            font-size: 1rem;
+            resize: vertical;
+            margin-bottom: 1.5rem;
+            box-sizing: border-box;
+        }
+
+        textarea:focus {
+            outline: none;
+            border-color: var(--primary);
+            box-shadow: 0 0 0 2px rgba(99, 102, 241, 0.2);
+        }
+
+        button {
+            width: 100%;
+            padding: 0.75rem;
+            background-color: var(--primary);
+            color: white;
+            border: none;
+            border-radius: 0.5rem;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: ALL 0.2s;
+        }
+
+        button:hover {
+            background-color: #4f46e5;
+            transform: translateY(-1px);
+        }
+
+        button:disabled {
+            opacity: 0.7;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        #result {
+            margin-top: 2rem;
+            display: none;
+            animation: fadeIn 0.3s ease-out;
+        }
+
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+                transform: translateY(10px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .verdict-card {
+            background-color: #334155;
+            padding: 1.5rem;
+            border-radius: 0.5rem;
+            text-align: center;
+            margin-bottom: 1.5rem;
+            border: 1px solid #475569;
+        }
+
+        .result-title {
+            font-size: 0.75rem;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+            margin-bottom: 0.5rem;
+        }
+
+        .result-value {
+            font-size: 2rem;
+            font-weight: 800;
+            margin-bottom: 0.25rem;
+        }
+
+        .human {
+            color: var(--success);
+        }
+
+        .ai {
+            color: var(--danger);
+            text-shadow: 0 0 15px rgba(239, 68, 68, 0.2);
+        }
+
+        .demo {
+            color: var(--warning);
+        }
+
+        .breakdown-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+            gap: 1rem;
+        }
+
+        .model-card {
+            background-color: #0f172a;
+            padding: 1rem;
+            border-radius: 0.5rem;
+            text-align: center;
+            border: 1px solid #334155;
+            transition: border-color 0.2s;
+        }
+
+        .model-card:hover {
+            border-color: #64748b;
+        }
+
+        .model-name {
+            font-size: 0.8rem;
+            color: var(--text-muted);
+            margin-bottom: 0.5rem;
+        }
+
+        .model-vote {
+            font-weight: 600;
+            font-size: 1rem;
+        }
+    </style>
+</head>
+
+<body>
+
+    <div class="container">
+        <h1>Review Detective</h1>
+        <div class="subtitle">Multi-Model Ensemble System</div>
+
+        <div class="status-bar">
+            <span class="status-label">Active Models:</span>
+            <div class="model-tags">
+                {% if loaded_models %}
+                {% for model in loaded_models %}
+                <span class="model-tag">{{ model }}</span>
+                {% endfor %}
+                {% else %}
+                <span class="model-tag empty">No Models Loaded</span>
+                {% endif %}
+            </div>
+        </div>
+
+        <form id="predictForm">
+            <textarea name="review_text" id="review_text" placeholder="Paste the review here to analyze..."></textarea>
+            <button type="submit" id="submitBtn">Analyze Authenticity</button>
+        </form>
+
+        <div id="result">
+            <div class="verdict-card" id="verdictCard">
+                <div class="result-title">Ensemble Verdict</div>
+                <div class="result-value" id="predictionValue"></div>
+                <div style="font-size: 0.9rem; color: #cbd5e1;">Confidence: <span id="confidenceValue"></span></div>
+                <div id="demoMessage" style="margin-top: 10px; font-size: 0.8rem; color: #eab308; display: none;"></div>
+            </div>
+
+            <div class="result-title" style="text-align: center; margin-bottom: 1rem;">Model Breakdown</div>
+            <div class="breakdown-grid" id="breakdownGrid">
+                <!-- Populated via JS -->
+            </div>
+        </div>
+    </div>
+
+    <script>
+        document.getElementById('predictForm').addEventListener('submit', async function (e) {
+            e.preventDefault();
+
+            const text = document.getElementById('review_text').value;
+            const btn = document.getElementById('submitBtn');
+            const resultDiv = document.getElementById('result');
+            const predictionValue = document.getElementById('predictionValue');
+            const confidenceValue = document.getElementById('confidenceValue');
+            const demoMessage = document.getElementById('demoMessage');
+            const breakdownGrid = document.getElementById('breakdownGrid');
+            const verdictCard = document.getElementById('verdictCard');
+
+            if (!text.trim()) return;
+
+            // UI Loading State
+            btn.textContent = "Analyzing...";
+            btn.disabled = true;
+            resultDiv.style.display = 'none';
+
+            try {
+                const formData = new FormData();
+                formData.append('review_text', text);
+
+                const response = await fetch('/predict', {
+                    method: 'POST',
+                    body: formData
+                });
+
+                const data = await response.json();
+
+                if (data.error) {
+                    alert('Error: ' + data.error);
+                    return;
+                }
+
+                // Display Results
+                resultDiv.style.display = 'block';
+                predictionValue.textContent = data.prediction;
+                confidenceValue.textContent = data.confidence;
+
+                // Style based on result
+                predictionValue.className = 'result-value';
+                verdictCard.style.borderColor = '#475569';
+
+                if (data.prediction === 'Human-Written') {
+                    predictionValue.classList.add('human');
+                    verdictCard.style.borderColor = 'var(--success)';
+                } else if (data.prediction === 'AI-Generated') {
+                    predictionValue.classList.add('ai');
+                    verdictCard.style.borderColor = 'var(--danger)';
+                } else {
+                    predictionValue.classList.add('demo');
+                }
+
+                if (data.status === 'demo') {
+                    demoMessage.textContent = data.message;
+                    demoMessage.style.display = 'block';
+                } else {
+                    demoMessage.style.display = 'none';
+                }
+
+                // Populate Breakdown
+                breakdownGrid.innerHTML = '';
+                for (const [model, vote] of Object.entries(data.breakdown)) {
+                    const card = document.createElement('div');
+                    card.className = 'model-card';
+
+                    let voteClass = '';
+                    if (vote === 'Human-Written') voteClass = 'human';
+                    else if (vote === 'AI-Generated') voteClass = 'ai';
+                    else voteClass = 'demo';
+
+                    card.innerHTML = `
+                    <div class="model-name">${model}</div>
+                    <div class="model-vote ${voteClass}">${vote}</div>
+                 `;
+                    breakdownGrid.appendChild(card);
+                }
+
+            } catch (error) {
+                console.error('Error:', error);
+                alert('An error occurred while analyzing the review.');
+            } finally {
+                btn.textContent = "Analyze Authenticity";
+                btn.disabled = false;
+            }
+        });
+    </script>
+
+</body>
+
+</html>
